@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="es">
+<head>
+<title>Curso | AquiVivo Español</title>
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="stylesheet" href="assets/css/styles.css" />
+<script src="assets/js/firebase.js"></script>
+
+<!-- Firebase SDKs (CDN) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/data.js"></script>
+
+</head>
+<body>
+<div class="page">
+
+<header class="topbar">
+  <div class="inner">
+    <div class="brand">
+      <div class="badge">ES</div>
+      <div class="title">
+        Curso
+        <small id="subtitle">Cargando…</small>
+      </div>
+    </div>
+    <div class="nav">
+      <a class="btn small" href="espanel.html">Panel</a>
+      <a class="btn small" id="btnBack" href="javascript:history.back()">Atrás</a>
+      <button class="btn small" onclick="AQV.signOut()">Cerrar sesión</button>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <section class="card">
+    <div class="row" style="align-items:flex-end;">
+      <div>
+        <label class="muted">Nivel</label>
+        <select id="levelSel"></select>
+      </div>
+      <div>
+        <label class="muted">Filtro</label>
+        <select id="kindSel">
+          <option value="">Todos</option>
+          <option value="vocab">Vocabulario</option>
+          <option value="gramatica">Gramática</option>
+        </select>
+      </div>
+      <div>
+        <label class="muted">Buscar</label>
+        <input id="q" class="input" placeholder="por ejemplo: ser, números, saludos…" />
+      </div>
+    </div>
+
+    <hr>
+
+    <div id="topics" class="list"></div>
+  </section>
+</main>
+
+<footer class="footer">AquiVivo Español • Curso</footer>
+
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+(async ()=>{
+  await AQV.guard({requireAuth:false});
+
+  const levelFromUrl = (AQV.getParam("level") || "A1").toUpperCase();
+  const subtitle = document.getElementById("subtitle");
+  const levelSel = document.getElementById("levelSel");
+  const kindSel = document.getElementById("kindSel");
+  const q = document.getElementById("q");
+  const topicsWrap = document.getElementById("topics");
+
+  // Populate levels
+  const levels = (await AQV.listLevels()) || [
+    { code:"A1", title:"A1 — Principiante" },
+    { code:"A2", title:"A2 — Básico" },
+    { code:"B1", title:"B1 — Intermedio" },
+  ];
+  levelSel.innerHTML = levels.map(l=>`<option value="${l.code}">${l.title}</option>`).join("");
+  levelSel.value = levels.find(l=>l.code===levelFromUrl)?.code || "A1";
+
+  const render = async () => {
+    const level = levelSel.value;
+    subtitle.textContent = `Nivel ${level}`;
+    const all = (await AQV.listTopics(level)) || [];
+    const kind = kindSel.value;
+    const query = (q.value||"").trim().toLowerCase();
+
+    let list = all.slice();
+    if(kind) list = list.filter(t=>t.kind===kind);
+    if(query) list = list.filter(t=>(t.title||"").toLowerCase().includes(query) || (t.slug||"").includes(query));
+
+    if(!list.length){
+      topicsWrap.innerHTML = `<div class="muted">No hay temas. (Añádelos en Admin)</div>`;
+      return;
+    }
+
+    topicsWrap.innerHTML = "";
+    list.forEach(t=>{
+      const progressKey = `aqv_prog_${level}_${t.slug}`;
+      const p = JSON.parse(localStorage.getItem(progressKey) || "{}");
+      const seen = !!p.lessonSeen;
+      const done = Number(p.exerciseDoneCount||0);
+
+      const item = document.createElement("div");
+      item.className = "item";
+      item.innerHTML = `
+        <div>
+          <strong>${t.title}</strong>
+          <div class="meta">${t.kind === "gramatica" ? "📚 Gramática" : "🧠 Vocabulario"} • id: ${t.slug}</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+            ${seen ? `<span class="tag ok">✅ Lección vista</span>` : `<span class="tag warn">⏳ Lección</span>`}
+            ${done>0 ? `<span class="tag ok">🧩 Ejercicios: ${done}</span>` : `<span class="tag">🧩 Ejercicios</span>`}
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
+          <a class="btn small primary" href="lessonpage.html?level=${encodeURIComponent(level)}&id=${encodeURIComponent(t.slug)}">Abrir</a>
+          <a class="btn small" href="ejercicio.html?level=${encodeURIComponent(level)}&id=${encodeURIComponent(t.slug)}">Ejercicios</a>
+        </div>
+      `;
+      topicsWrap.appendChild(item);
+    });
+  };
+
+  levelSel.onchange = () => {
+    const u = new URL(location.href);
+    u.searchParams.set("level", levelSel.value);
+    history.replaceState(null, "", u.toString());
+    render();
+  };
+  kindSel.onchange = render;
+  q.oninput = () => { clearTimeout(q._t); q._t=setTimeout(render, 180); };
+
+  await render();
+})();
+</script>
+
+</body>
+</html>

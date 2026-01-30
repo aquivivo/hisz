@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="es">
+<head>
+<title>Login | AquiVivo Español</title>
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="stylesheet" href="assets/css/styles.css" />
+<script src="assets/js/firebase.js"></script>
+
+<!-- Firebase SDKs (CDN) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/data.js"></script>
+
+</head>
+<body>
+<div class="page">
+
+<header class="topbar">
+  <div class="inner">
+    <div class="brand">
+      <div class="badge">ES</div>
+      <div class="title">
+        AquiVivo Español
+        <small>Aprender español — simple y bonito</small>
+      </div>
+    </div>
+    <div class="nav">
+      <a class="btn ghost small" href="course.html?level=A1">Demo</a>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <div class="grid cols2">
+    <section class="card">
+      <h2>Acceso</h2>
+      <p class="muted">Inicia sesión o crea una cuenta. (Firebase Auth)</p>
+
+      <div class="row">
+        <div>
+          <label class="muted">Email</label>
+          <input id="email" class="input" type="email" placeholder="tu@email.com" />
+        </div>
+        <div>
+          <label class="muted">Contraseña</label>
+          <input id="password" class="input" type="password" placeholder="••••••••" />
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+        <button class="btn primary" id="btnLogin">Entrar</button>
+        <button class="btn" id="btnRegister">Crear cuenta</button>
+        <button class="btn ghost" id="btnReset">Restablecer</button>
+      </div>
+
+      <div class="muted" style="margin-top:12px; font-size:13px;">
+        Consejo: pega tu config en <b>assets/js/firebase.js</b> para activar todo.
+      </div>
+    </section>
+
+    <section class="card" style="display:grid; place-items:center; text-align:center;">
+      <div>
+        <div class="coffee float" style="margin:0 auto 12px;"><span>☕</span></div>
+        <h2 style="margin:0;">Tu mini-campus</h2>
+        <p class="muted" style="max-width: 420px; margin:10px auto 0;">
+          Niveles, temas, lecciones y ejercicios. El admin crea contenido en un panel separado.
+        </p>
+        <div class="kpi" style="justify-content:center; margin-top:12px;">
+          <div class="pill">🔥 Tema por tema</div>
+          <div class="pill">✅ Progreso</div>
+          <div class="pill">🧩 Ejercicios</div>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer class="footer">AquiVivo Español • versión base • 2026</footer>
+
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+(async ()=>{
+  await AQV.authInit();
+  // optional seed
+  try{ await AQV.seedIfEmpty(); }catch(e){}
+
+  const go = () => location.href = "espanel.html";
+  const onErr = (e) => AQV.toast((e && e.message) ? e.message : "Error");
+
+  document.getElementById("btnLogin").onclick = async () => {
+    try{
+      const email = document.getElementById("email").value.trim();
+      const pass = document.getElementById("password").value;
+      await AQV.login(email, pass);
+      AQV.toast("¡Listo!");
+      setTimeout(go, 350);
+    }catch(e){ onErr(e); }
+  };
+
+  document.getElementById("btnRegister").onclick = async () => {
+    try{
+      const email = document.getElementById("email").value.trim();
+      const pass = document.getElementById("password").value;
+      await AQV.register(email, pass);
+      AQV.toast("Cuenta creada. Revisa tu email (verificación).");
+      setTimeout(go, 650);
+    }catch(e){ onErr(e); }
+  };
+
+  document.getElementById("btnReset").onclick = async () => {
+    try{
+      const email = document.getElementById("email").value.trim();
+      await AQV.resetPassword(email);
+      AQV.toast("Email enviado.");
+    }catch(e){ onErr(e); }
+  };
+})();
+</script>
+
+</body>
+</html>

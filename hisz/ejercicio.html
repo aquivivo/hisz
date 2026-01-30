@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="es">
+<head>
+<title>Ejercicios | AquiVivo Español</title>
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="stylesheet" href="assets/css/styles.css" />
+<script src="assets/js/firebase.js"></script>
+
+<!-- Firebase SDKs (CDN) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/data.js"></script>
+
+</head>
+<body>
+<div class="page">
+
+<header class="topbar">
+  <div class="inner">
+    <div class="brand">
+      <div class="badge">ES</div>
+      <div class="title">
+        Ejercicios
+        <small id="subtitle">Cargando…</small>
+      </div>
+    </div>
+    <div class="nav">
+      <a class="btn small" href="espanel.html">Panel</a>
+      <a class="btn small" id="btnLesson" href="#">Lección</a>
+      <a class="btn small" id="btnHome" href="#">Inicio</a>
+      <a class="btn small" href="javascript:history.back()">Atrás</a>
+      <button class="btn small" onclick="AQV.signOut()">Cerrar sesión</button>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <section class="card">
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
+      <div>
+        <h2 id="title" style="margin:0 0 6px;">…</h2>
+        <div class="kpi">
+          <div class="pill" id="pillLevel">Nivel</div>
+          <div class="pill" id="pillCount">0 ejercicios</div>
+        </div>
+      </div>
+      <div class="coffee"><span>☕</span></div>
+    </div>
+
+    <hr>
+
+    <div id="exWrap" class="list"></div>
+
+    <hr>
+
+    <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+      <a class="btn" id="btnBackLesson" href="#">← Volver a lección</a>
+      <button class="btn primary" id="btnSaveProgress">Guardar progreso</button>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">AquiVivo Español • Ejercicios</footer>
+
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+(async ()=>{
+  await AQV.guard({requireAuth:false});
+
+  const level = (AQV.getParam("level") || "A1").toUpperCase();
+  const topicSlug = (AQV.getParam("id") || "").trim();
+  if(!topicSlug){
+    document.getElementById("exWrap").innerHTML = `<div class="muted">Falta ?id=TOPIC_SLUG</div>`;
+    return;
+  }
+
+  document.getElementById("btnLesson").href = `lessonpage.html?level=${encodeURIComponent(level)}&id=${encodeURIComponent(topicSlug)}`;
+  document.getElementById("btnBackLesson").href = `lessonpage.html?level=${encodeURIComponent(level)}&id=${encodeURIComponent(topicSlug)}`;
+  document.getElementById("btnHome").href = `course.html?level=${encodeURIComponent(level)}`;
+  document.getElementById("pillLevel").textContent = `Nivel ${level}`;
+
+  let topicTitle = topicSlug;
+  try{
+    const topics = await AQV.listTopics(level);
+    const t = (topics||[]).find(x=>x.slug===topicSlug);
+    if(t){ topicTitle = t.title; }
+  }catch(e){}
+  document.getElementById("title").textContent = topicTitle;
+  document.getElementById("subtitle").textContent = `${level} • ${topicTitle}`;
+
+  const ex = await AQV.listExercises({level, topicSlug});
+  const wrap = document.getElementById("exWrap");
+  wrap.innerHTML = "";
+
+  if(!ex.length){
+    wrap.innerHTML = `
+      <div class="muted">No hay ejercicios aún.</div>
+      <div style="margin-top:10px;"><a class="btn small" href="admin.html#exercises">Añadir en Admin</a></div>
+    `;
+    document.getElementById("pillCount").textContent = "0 ejercicios";
+    return;
+  }
+
+  document.getElementById("pillCount").textContent = `${ex.length} ejercicios`;
+
+  ex.forEach((e, idx)=>{
+    const card = document.createElement("div");
+    card.className = "item";
+    const options = Array.isArray(e.options) ? e.options : [];
+    card.innerHTML = `
+      <div style="flex:1;">
+        <strong>${idx+1}. ${e.prompt || "(sin texto)"}</strong>
+        <div class="meta">Tipo: ${e.type || "choice"} • Orden: ${e.order||idx+1}</div>
+        ${options.length ? `
+          <div style="margin-top:10px; display:grid; gap:8px;">
+            ${options.map((op,i)=>`
+              <label class="tag" style="justify-content:flex-start; gap:10px; cursor:pointer;">
+                <input type="radio" name="q_${idx}" value="${String(op).replaceAll('"','&quot;')}" />
+                <span>${op}</span>
+              </label>
+            `).join("")}
+          </div>
+        ` : `
+          <div style="margin-top:10px;">
+            <input class="input" placeholder="Tu respuesta..." data-q="${idx}" />
+          </div>
+        `}
+        <div class="muted" style="margin-top:10px; font-size:13px; display:none;" data-exp="${idx}"></div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
+        <button class="btn small" data-check="${idx}">Comprobar</button>
+        <span class="tag" data-res="${idx}">—</span>
+      </div>
+    `;
+    wrap.appendChild(card);
+
+    // Check logic
+    card.querySelector(`[data-check="${idx}"]`).onclick = () => {
+      const ans = (e.answer || "").trim();
+      let given = "";
+      const radios = card.querySelectorAll(`input[type="radio"][name="q_${idx}"]`);
+      if(radios.length){
+        const sel = Array.from(radios).find(r=>r.checked);
+        given = sel ? sel.value : "";
+      }else{
+        const inp = card.querySelector(`input[data-q="${idx}"]`);
+        given = (inp?.value || "").trim();
+      }
+
+      const ok = ans && given && (given.toLowerCase() === ans.toLowerCase());
+      const res = card.querySelector(`[data-res="${idx}"]`);
+      res.textContent = ok ? "✅ Bien" : "❌ Revisa";
+      res.className = "tag " + (ok ? "ok" : "bad");
+
+      const exp = card.querySelector(`[data-exp="${idx}"]`);
+      if(e.explanation){
+        exp.style.display = "";
+        exp.textContent = (ok ? "Correcto. " : "Explicación: ") + e.explanation;
+      }
+    };
+  });
+
+  document.getElementById("btnSaveProgress").onclick = () => {
+    const key = `aqv_prog_${level}_${topicSlug}`;
+    const p = JSON.parse(localStorage.getItem(key)||"{}");
+    p.exerciseDoneCount = ex.length;
+    p.updatedAt = Date.now();
+    localStorage.setItem(key, JSON.stringify(p));
+    AQV.toast("Progreso guardado ✅");
+    AQV.saveLast({ level, topicSlug, topicTitle });
+  };
+})();
+</script>
+
+</body>
+</html>

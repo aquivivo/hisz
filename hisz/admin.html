@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="es">
+<head>
+<title>Admin | AquiVivo Español</title>
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="stylesheet" href="assets/css/styles.css" />
+<script src="assets/js/firebase.js"></script>
+
+<!-- Firebase SDKs (CDN) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/data.js"></script>
+
+</head>
+<body>
+<div class="page">
+
+<header class="topbar">
+  <div class="inner">
+    <div class="brand">
+      <div class="badge">ES</div>
+      <div class="title">
+        Admin
+        <small id="subtitle">Contenido</small>
+      </div>
+    </div>
+    <div class="nav">
+      <a class="btn small" href="espanel.html">Panel</a>
+      <a class="btn small" href="course.html?level=A1">Vista alumno</a>
+      <button class="btn small" onclick="AQV.signOut()">Cerrar sesión</button>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <div class="grid cols2">
+    <section class="card" id="topicsSec">
+      <h2>1) Temas (topics)</h2>
+      <p class="muted">Crea temas por nivel. Cada tema tiene slug (id), título y tipo.</p>
+
+      <div class="row">
+        <div>
+          <label class="muted">Nivel</label>
+          <select id="tLevel"></select>
+        </div>
+        <div>
+          <label class="muted">Tipo</label>
+          <select id="tKind">
+            <option value="vocab">Vocabulario</option>
+            <option value="gramatica">Gramática</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label class="muted">Título</label>
+          <input id="tTitle" class="input" placeholder="p. ej. Pronombres personales" />
+        </div>
+        <div>
+          <label class="muted">Slug (id)</label>
+          <input id="tSlug" class="input" placeholder="p. ej. pronombres-personales" />
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+        <button class="btn primary" id="btnAddTopic">Añadir tema</button>
+        <button class="btn" id="btnReloadTopics">Recargar</button>
+      </div>
+
+      <hr>
+      <div id="topicsList" class="list"></div>
+    </section>
+
+    <section class="card" id="lessonsSec">
+      <h2>2) Lecciones (lessons)</h2>
+      <p class="muted">Selecciona tema y pega HTML de la lección.</p>
+
+      <div class="row">
+        <div>
+          <label class="muted">Nivel</label>
+          <select id="lLevel"></select>
+        </div>
+        <div>
+          <label class="muted">Tema</label>
+          <select id="lTopic"></select>
+        </div>
+      </div>
+
+      <label class="muted">HTML de la lección</label>
+      <textarea id="lHtml" rows="12" placeholder="<h2>…</h2>"></textarea>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+        <button class="btn primary" id="btnSaveLesson">Guardar lección</button>
+        <label class="tag" style="cursor:pointer;">
+          <input id="lPublished" type="checkbox" checked />
+          Publicado
+        </label>
+        <a class="btn" id="btnPreviewLesson" href="#" target="_blank">Vista previa</a>
+      </div>
+    </section>
+  </div>
+
+  <div style="height:14px"></div>
+
+  <section class="card" id="exercisesSec">
+    <h2>3) Ejercicios (exercises)</h2>
+    <p class="muted">Crea ejercicios simples (choice/fill). Se guardan en Firestore.</p>
+
+    <div class="row">
+      <div>
+        <label class="muted">Nivel</label>
+        <select id="eLevel"></select>
+      </div>
+      <div>
+        <label class="muted">Tema</label>
+        <select id="eTopic"></select>
+      </div>
+      <div>
+        <label class="muted">Orden</label>
+        <input id="eOrder" class="input" type="number" value="1" />
+      </div>
+      <div>
+        <label class="muted">Tipo</label>
+        <select id="eType">
+          <option value="choice">Choice</option>
+          <option value="fill">Fill</option>
+        </select>
+      </div>
+    </div>
+
+    <label class="muted">Pregunta / prompt</label>
+    <input id="ePrompt" class="input" placeholder="p. ej. ¿Cómo se dice 'dzień dobry'?" />
+
+    <div class="row">
+      <div>
+        <label class="muted">Opciones (una por línea, para choice)</label>
+        <textarea id="eOptions" rows="4" placeholder="Buenos días&#10;Buenas noches&#10;Hola"></textarea>
+      </div>
+      <div>
+        <label class="muted">Respuesta correcta</label>
+        <input id="eAnswer" class="input" placeholder="Buenos días" />
+        <div style="height:10px"></div>
+        <label class="muted">Explicación (opcional)</label>
+        <input id="eExplanation" class="input" placeholder="Usamos 'Buenos días' por la mañana." />
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+      <button class="btn primary" id="btnAddExercise">Añadir ejercicio</button>
+      <button class="btn" id="btnReloadExercises">Recargar lista</button>
+    </div>
+
+    <hr>
+    <div id="exList" class="list"></div>
+  </section>
+</main>
+
+<footer class="footer">AquiVivo Español • Admin</footer>
+
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+(async ()=>{
+  const g = await AQV.guard({requireAuth:true, requireAdmin:true});
+  if(g?.skipped){
+    AQV.toast("Para usar Admin necesitas Firebase configurado.");
+    return;
+  }
+
+  // Seed (first run)
+  try{ await AQV.seedIfEmpty(); }catch(e){}
+
+  const levels = await AQV.listLevels();
+  const fillLevels = (selId) => {
+    const sel = document.getElementById(selId);
+    sel.innerHTML = levels.map(l=>`<option value="${l.code}">${l.title}</option>`).join("");
+    sel.value = "A1";
+  };
+  ["tLevel","lLevel","eLevel"].forEach(fillLevels);
+
+  const loadTopicsInto = async (level, selId) => {
+    const sel = document.getElementById(selId);
+    const topics = await AQV.listTopics(level);
+    sel.innerHTML = topics.map(t=>`<option value="${t.slug}">${t.title}</option>`).join("");
+    if(!topics.length){
+      sel.innerHTML = `<option value="">(sin temas)</option>`;
+    }
+  };
+
+  // Topics list
+  const renderTopicsList = async () => {
+    const level = document.getElementById("tLevel").value;
+    const topics = await AQV.listTopics(level);
+    const wrap = document.getElementById("topicsList");
+    if(!topics.length){
+      wrap.innerHTML = `<div class="muted">No hay temas para ${level}.</div>`;
+      return;
+    }
+    wrap.innerHTML = "";
+    topics.forEach(t=>{
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div>
+          <strong>${t.title}</strong>
+          <div class="meta">${t.kind} • slug: ${t.slug} • order: ${t.order||0}</div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <a class="btn small" href="lessonpage.html?level=${encodeURIComponent(t.level)}&id=${encodeURIComponent(t.slug)}" target="_blank">Ver</a>
+          <a class="btn small" href="ejercicio.html?level=${encodeURIComponent(t.level)}&id=${encodeURIComponent(t.slug)}" target="_blank">Ej</a>
+        </div>
+      `;
+      wrap.appendChild(div);
+    });
+  };
+
+  document.getElementById("tLevel").onchange = async () => {
+    await renderTopicsList();
+    await loadTopicsInto(document.getElementById("tLevel").value, "lTopic");
+    await loadTopicsInto(document.getElementById("tLevel").value, "eTopic");
+  };
+
+  document.getElementById("btnAddTopic").onclick = async () => {
+    const db = await AQV.db();
+    const level = document.getElementById("tLevel").value;
+    const title = document.getElementById("tTitle").value.trim();
+    const slug = document.getElementById("tSlug").value.trim();
+    const kind = document.getElementById("tKind").value;
+    if(!title || !slug){ AQV.toast("Falta título o slug."); return; }
+
+    // Auto order: last+1
+    const snap = await db.collection("topics").where("level","==",level).orderBy("order","desc").limit(1).get();
+    const nextOrder = snap.empty ? 1 : (Number(snap.docs[0].data().order||0) + 1);
+
+    await db.collection("topics").doc(`${level}_${slug}`).set({
+      level, title, slug, kind, order: nextOrder, published:true
+    }, { merge:true });
+
+    document.getElementById("tTitle").value = "";
+    document.getElementById("tSlug").value = "";
+    AQV.toast("Tema añadido ✅");
+    await renderTopicsList();
+    await loadTopicsInto(level, "lTopic");
+    await loadTopicsInto(level, "eTopic");
+  };
+
+  document.getElementById("btnReloadTopics").onclick = renderTopicsList;
+
+  // Lessons
+  const refreshLessonSelection = async () => {
+    const level = document.getElementById("lLevel").value;
+    await loadTopicsInto(level, "lTopic");
+    const topicSlug = document.getElementById("lTopic").value;
+    const lesson = await AQV.getLesson({level, topicSlug});
+    document.getElementById("lHtml").value = lesson?.html || "";
+    document.getElementById("lPublished").checked = lesson?.published ?? true;
+    document.getElementById("btnPreviewLesson").href = `lessonpage.html?level=${encodeURIComponent(level)}&id=${encodeURIComponent(topicSlug)}`;
+  };
+
+  document.getElementById("lLevel").onchange = refreshLessonSelection;
+  document.getElementById("lTopic").onchange = refreshLessonSelection;
+
+  document.getElementById("btnSaveLesson").onclick = async () => {
+    const level = document.getElementById("lLevel").value;
+    const topicSlug = document.getElementById("lTopic").value;
+    const html = document.getElementById("lHtml").value;
+    const published = document.getElementById("lPublished").checked;
+    if(!topicSlug){ AQV.toast("Selecciona tema."); return; }
+    await AQV.saveLesson({level, topicSlug, html, published});
+    AQV.toast("Lección guardada ✅");
+  };
+
+  // Exercises
+  const renderExercises = async () => {
+    const level = document.getElementById("eLevel").value;
+    const topicSlug = document.getElementById("eTopic").value;
+    const list = await AQV.listExercises({level, topicSlug});
+    const wrap = document.getElementById("exList");
+    if(!list.length){
+      wrap.innerHTML = `<div class="muted">Sin ejercicios para este tema.</div>`;
+      return;
+    }
+    wrap.innerHTML = "";
+    list.forEach(x=>{
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div>
+          <strong>${x.prompt || "(sin texto)"}</strong>
+          <div class="meta">type: ${x.type} • order: ${x.order} • id: ${x.id}</div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn small" data-del="${x.id}">Eliminar</button>
+        </div>
+      `;
+      wrap.appendChild(div);
+      div.querySelector(`[data-del="${x.id}"]`).onclick = async () => {
+        await AQV.deleteExercise(x.id);
+        AQV.toast("Eliminado");
+        await renderExercises();
+      };
+    });
+  };
+
+  document.getElementById("eLevel").onchange = async () => {
+    await loadTopicsInto(document.getElementById("eLevel").value, "eTopic");
+    await renderExercises();
+  };
+  document.getElementById("eTopic").onchange = renderExercises;
+
+  document.getElementById("btnAddExercise").onclick = async () => {
+    const level = document.getElementById("eLevel").value;
+    const topicSlug = document.getElementById("eTopic").value;
+    if(!topicSlug){ AQV.toast("Selecciona tema."); return; }
+
+    const order = document.getElementById("eOrder").value;
+    const type = document.getElementById("eType").value;
+    const prompt = document.getElementById("ePrompt").value.trim();
+    const answer = document.getElementById("eAnswer").value.trim();
+    const explanation = document.getElementById("eExplanation").value.trim();
+    const options = document.getElementById("eOptions").value
+      .split("\n").map(x=>x.trim()).filter(Boolean);
+
+    await AQV.saveExercise({level, topicSlug, order, type, prompt, options, answer, explanation});
+    AQV.toast("Ejercicio añadido ✅");
+    document.getElementById("ePrompt").value = "";
+    document.getElementById("eAnswer").value = "";
+    document.getElementById("eExplanation").value = "";
+    await renderExercises();
+  };
+
+  document.getElementById("btnReloadExercises").onclick = renderExercises;
+
+  // Initial load
+  await renderTopicsList();
+  await loadTopicsInto("A1", "lTopic");
+  await loadTopicsInto("A1", "eTopic");
+  await refreshLessonSelection();
+  await renderExercises();
+
+  // Hash anchors
+  if(location.hash === "#lessons") document.getElementById("lessonsSec").scrollIntoView({behavior:"smooth"});
+  if(location.hash === "#exercises") document.getElementById("exercisesSec").scrollIntoView({behavior:"smooth"});
+})();
+</script>
+
+</body>
+</html>

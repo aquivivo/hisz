@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="es">
+<head>
+<title>Lección | AquiVivo Español</title>
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="stylesheet" href="assets/css/styles.css" />
+<script src="assets/js/firebase.js"></script>
+
+<!-- Firebase SDKs (CDN) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/data.js"></script>
+
+</head>
+<body>
+<div class="page">
+
+<header class="topbar">
+  <div class="inner">
+    <div class="brand">
+      <div class="badge">ES</div>
+      <div class="title">
+        Lección
+        <small id="subtitle">Cargando…</small>
+      </div>
+    </div>
+    <div class="nav">
+      <a class="btn small" href="espanel.html">Panel</a>
+      <a class="btn small" id="btnEj" href="#">Ejercicios</a>
+      <a class="btn small" id="btnHome" href="#">Inicio</a>
+      <a class="btn small" href="javascript:history.back()">Atrás</a>
+      <button class="btn small" onclick="AQV.signOut()">Cerrar sesión</button>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <section class="card">
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
+      <div>
+        <h2 id="title" style="margin:0 0 6px;">…</h2>
+        <div class="kpi">
+          <div class="pill" id="pillLevel">Nivel</div>
+          <div class="pill" id="pillKind">Tipo</div>
+          <div class="pill" id="pillStatus">Estado</div>
+        </div>
+      </div>
+      <div class="coffee float" title="Mascota"><span>☕</span></div>
+    </div>
+
+    <hr>
+
+    <div id="lesson" class="muted">Cargando contenido…</div>
+
+    <hr>
+
+    <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+      <a class="btn" id="btnPrev" href="javascript:history.back()">← Atrás</a>
+      <a class="btn primary" id="btnNextEj" href="#">Ir a ejercicios →</a>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">AquiVivo Español • Lección</footer>
+
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+(async ()=>{
+  await AQV.guard({requireAuth:false});
+
+  const level = (AQV.getParam("level") || "A1").toUpperCase();
+  const topicSlug = (AQV.getParam("id") || "").trim();
+  if(!topicSlug){
+    document.getElementById("lesson").textContent = "Falta ?id=TOPIC_SLUG";
+    return;
+  }
+
+  document.getElementById("btnEj").href = `ejercicio.html?level=${encodeURIComponent(level)}&id=${encodeURIComponent(topicSlug)}`;
+  document.getElementById("btnHome").href = `course.html?level=${encodeURIComponent(level)}`;
+  document.getElementById("btnNextEj").href = `ejercicio.html?level=${encodeURIComponent(level)}&id=${encodeURIComponent(topicSlug)}`;
+  document.getElementById("pillLevel").textContent = `Nivel ${level}`;
+
+  // Try to fetch topic meta to show title/kind
+  let topicTitle = topicSlug;
+  let kind = "";
+  try{
+    const topics = await AQV.listTopics(level);
+    const t = (topics||[]).find(x=>x.slug===topicSlug);
+    if(t){ topicTitle = t.title; kind = t.kind; }
+  }catch(e){}
+
+  document.getElementById("title").textContent = topicTitle;
+  document.getElementById("pillKind").textContent = kind ? (kind==="gramatica" ? "📚 Gramática" : "🧠 Vocabulario") : "Tema";
+  document.getElementById("subtitle").textContent = `${level} • ${topicTitle}`;
+
+  // Lesson content
+  const lesson = await AQV.getLesson({level, topicSlug});
+  const wrap = document.getElementById("lesson");
+  if(lesson?.html){
+    wrap.classList.remove("muted");
+    wrap.innerHTML = lesson.html;
+    document.getElementById("pillStatus").textContent = lesson.published ? "Publicado" : "Borrador";
+  }else{
+    wrap.innerHTML = `
+      <div class="muted">No hay lección aún.</div>
+      <div style="margin-top:10px;">
+        <a class="btn small" href="admin.html#lessons">Crear en Admin</a>
+      </div>
+    `;
+    document.getElementById("pillStatus").textContent = "Sin contenido";
+  }
+
+  // Save local progress
+  const key = `aqv_prog_${level}_${topicSlug}`;
+  const p = JSON.parse(localStorage.getItem(key)||"{}");
+  p.lessonSeen = true;
+  p.updatedAt = Date.now();
+  localStorage.setItem(key, JSON.stringify(p));
+  AQV.saveLast({ level, topicSlug, topicTitle });
+})();
+</script>
+
+</body>
+</html>

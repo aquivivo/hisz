@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="es">
+<head>
+<title>Panel | AquiVivo Español</title>
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="stylesheet" href="assets/css/styles.css" />
+<script src="assets/js/firebase.js"></script>
+
+<!-- Firebase SDKs (CDN) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/data.js"></script>
+
+</head>
+<body>
+<div class="page">
+
+<header class="topbar">
+  <div class="inner">
+    <div class="brand">
+      <div class="badge">ES</div>
+      <div class="title">
+        Panel
+        <small id="who">Cargando…</small>
+      </div>
+    </div>
+    <div class="nav">
+      <a class="btn small" id="btnAdmin" href="admin.html" style="display:none;">🛠️ Admin</a>
+      <a class="btn small" href="course.html?level=A1">Cursos</a>
+      <button class="btn small" onclick="AQV.signOut()">Cerrar sesión</button>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <div class="grid cols2">
+    <section class="card">
+      <h2>Mis niveles</h2>
+      <p class="muted">Elige un nivel para ver temas y empezar la lección.</p>
+      <div id="levels" class="list"></div>
+    </section>
+
+    <section class="card">
+      <h2>Última actividad</h2>
+      <p class="muted">Volver rápidamente donde lo dejaste.</p>
+      <div id="last" class="item">
+        <div>
+          <strong>Sin actividad</strong>
+          <div class="meta">Empieza un curso y aquí aparecerá tu último tema.</div>
+        </div>
+        <div><span class="tag">📌</span></div>
+      </div>
+      <hr>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+        <div>
+          <strong>Tip</strong>
+          <div class="meta">En admin puedes crear lecciones y ejercicios.</div>
+        </div>
+        <div class="coffee"><span>☕</span></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer class="footer">AquiVivo Español • Panel</footer>
+
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+(async ()=>{
+  const g = await AQV.guard({requireAuth:true, requireAdmin:false});
+  if(g?.skipped){
+    AQV.toast("Configura Firebase para activar login real.");
+  }
+  const user = g?.user || null;
+
+  const who = document.getElementById("who");
+  who.textContent = user ? user.email : "Modo demo (sin Firebase)";
+
+  // Admin button if profile says admin
+  if(user && window.firebase && firebase.apps.length){
+    try{
+      const db = firebase.firestore();
+      const snap = await db.collection("users").doc(user.uid).get();
+      const isAdmin = !!snap.data()?.isAdmin;
+      if(isAdmin) document.getElementById("btnAdmin").style.display = "";
+    }catch(e){}
+  }
+
+  // Levels
+  const list = document.getElementById("levels");
+  const levels = (await AQV.listLevels()) || [
+    { code:"A1", title:"A1 — Principiante" },
+    { code:"A2", title:"A2 — Básico" },
+    { code:"B1", title:"B1 — Intermedio" },
+  ];
+
+  list.innerHTML = "";
+  levels.forEach(l=>{
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      <div>
+        <strong>${l.title}</strong>
+        <div class="meta">Temas: vocabulario + gramática</div>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <a class="btn small" href="course.html?level=${encodeURIComponent(l.code)}">Abrir</a>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+
+  // Last activity
+  const last = AQV.loadLast();
+  if(last?.level && last?.topicSlug){
+    const el = document.getElementById("last");
+    el.innerHTML = `
+      <div>
+        <strong>${last.level.toUpperCase()} • ${last.topicTitle || last.topicSlug}</strong>
+        <div class="meta">Continuar la lección.</div>
+      </div>
+      <div><a class="btn small primary" href="lessonpage.html?level=${encodeURIComponent(last.level)}&id=${encodeURIComponent(last.topicSlug)}">Continuar</a></div>
+    `;
+  }
+})();
+</script>
+
+</body>
+</html>
